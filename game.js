@@ -59,10 +59,81 @@ class Actor {
         } else if (actor === this) {
             return false;
         } else {
-			return !(this.right <= actor.left ||
-            this.left >= actor.right ||
-            this.bottom <= actor.top ||
-            this.top >= actor.bottom);
-		}
+            return !(this.right <= actor.left ||
+                this.left >= actor.right ||
+                this.bottom <= actor.top ||
+                this.top >= actor.bottom);
+        }
+    }
+}
+
+class Level {
+    constructor(grid = [], actors = []) {
+        this.grid = grid;
+        this.actors = actors;
+        this.height = grid.length;
+        this.width = this.height > 0 ? Math.max(...grid.map(el => el.length)) : 0;
+        this.status = null;
+        this.finishDelay = 1;
+        this.player = this.actors.find(actor => actor.type === 'player');
+    }
+    isFinished() {
+        return (this.status !== null && this.finishDelay < 0);
+    }
+
+
+    actorAt(obj) {
+        if (!(obj instanceof(Actor)) || obj === undefined) {
+            throw new Error('Level.actorAt: аргумент должен быть объектом Actor')
+        }
+        if (this.actors === undefined) {
+            return undefined;
+        }
+        for (const actor of this.actors) {
+            if (actor.isIntersect(obj)) {
+                return actor;
+            }
+        }
+        return undefined;
+    }
+    obstacleAt(destination, size) {
+        if (!(destination instanceof(Vector)) || !(size instanceof(Vector))) {
+            throw new Error('Level.obstacleAt: аргументы должны быть объектами Vector')
+        }
+        let actor = new Actor(destination, size);
+        if (actor.top < 0 || actor.left < 0 || actor.right > this.width) {
+            return 'wall';
+        }
+        if (actor.bottom > this.height) {
+            return 'lava';
+        }
+        for (let col = Math.floor(actor.top); col < Math.ceil(actor.bottom); col++) {
+            for (let row = Math.floor(actor.left); row < Math.ceil(actor.right); row++) {
+                if (this.grid[col][row] !== undefined) {
+                    return this.grid[col][row];
+                }
+            }
+        }
+        return undefined;
+    }
+    removeActor(actor) {
+        this.actors = this.actors.filter(item => item.pos !== actor.pos || item.size !== actor.size || item.speed !== actor.speed);
+    }
+    noMoreActors(type) {
+        if (!(this.actors.find(actor => actor.type === type))) {
+            return true;
+        }
+        return false;
+    }
+    playerTouched(type, actor) {
+        if (type === 'lava' || type === 'fireball') {
+            this.status = 'lost';
+        }
+        if (type === 'coin' && actor.type === 'coin') {
+            this.removeActor(actor);
+            if(this.noMoreActors('coin')) {
+                this.status = 'won';
+            }
+        }
     }
 }
