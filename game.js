@@ -137,3 +137,55 @@ class Level {
         }
     }
 }
+
+class LevelParser {
+  constructor(dictionary) {
+    this.dictionary = dictionary;
+  }
+  actorFromSymbol(symbol) {
+    if (symbol === undefined) {
+      return undefined;
+    }
+    return this.dictionary[symbol] ? this.dictionary[symbol] : undefined;
+  }
+  obstacleFromSymbol(symbol) {
+    if (symbol === 'x') {
+      return 'wall';
+    } else if (symbol === '!') {
+      return 'lava';
+    } else {
+      return undefined;
+    }
+  }
+  createGrid(plan) {
+    const result = [];
+    for (const row of plan) {
+      const newRow = [];
+      for (const cell of row) {
+        newRow.push(this.obstacleFromSymbol(cell));
+      }
+      result.push(newRow);
+    }
+    return result;
+  }
+  createActors(plan) {
+    const result = [];
+    if (this.dictionary) {
+      plan.forEach((row, y) => {
+        row.split('').forEach((cell, x) => {
+          if (typeof this.dictionary[cell] === 'function') {
+            const pos = new Vector(x, y);
+            const actor = new this.dictionary[cell](pos);
+            if (actor instanceof Actor) {
+              result.push(actor);
+            }
+          }
+        })
+      })
+    }
+    return result;
+  }
+  parse(plan) {
+    return new Level(this.createGrid(plan), this.createActors(plan));
+  }
+}
