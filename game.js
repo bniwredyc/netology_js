@@ -189,3 +189,97 @@ class LevelParser {
     return new Level(this.createGrid(plan), this.createActors(plan));
   }
 }
+
+class Fireball extends Actor {
+  constructor(pos = new Vector(), speed = new Vector()) {
+    super(pos, new Vector(1,1), speed);
+  }
+  get type() {
+    return 'fireball';
+  }
+  getNextPosition(t = 1) {
+    return this.pos.plus(this.speed.times(t));
+  }
+  handleObstacle() {
+    this.speed.x = -this.speed.x;
+    this.speed.y = -this.speed.y;
+  }
+  act(t, lvl) {
+    let nextPosition = this.getNextPosition(t);
+    if (!lvl.obstacleAt(nextPosition, this.size)) {
+      this.pos = nextPosition;
+    } else {
+      this.handleObstacle();
+    }
+  }
+}
+
+class HorizontalFireball extends Fireball{
+  constructor(pos) {
+    super(pos, new Vector(2, 0));
+  }
+}
+
+class VerticalFireball extends Fireball{
+  constructor(pos) {
+    super(pos, new Vector(0, 2));
+  }
+}
+
+class FireRain extends Fireball{
+  constructor(pos) {
+    super(pos, new Vector(0, 3));
+    this.init = pos;
+  }
+  handleObstacle() {
+    this.pos = this.init;
+  }
+}
+
+class Coin extends Actor {
+  constructor(pos = new Vector()) {
+    super(pos.plus(new Vector(0.2, 0.1)), new Vector(0.6, 0.6));
+    this.initPos = pos.plus(new Vector(0.2, 0.1));
+    this.springSpeed = 8;
+    this.springDist = 0.07;
+    this.spring = Math.random() * Math.PI * 2;
+  }
+  get type() {
+    return 'coin';
+  }
+  updateSpring(t = 1) {
+    this.spring += this.springSpeed * t;
+  }
+  getSpringVector() {
+    return new Vector(0, Math.sin(this.spring) * this.springDist);
+  }
+  getNextPosition(t = 1) {
+    this.updateSpring(t);
+    return this.initPos.plus(this.getSpringVector());
+  }
+  act(t) {
+    this.pos = this.getNextPosition(t);
+  }
+}
+
+class Player extends Actor {
+  constructor(pos = new Vector(1,1)) {
+    super(pos.plus(new Vector(0, -0.5)), new Vector(0.8, 1.5), new Vector());
+  }
+  get type() {
+    return 'player';
+  }
+}
+
+const actors = {
+  '@': Player,
+  'o': Coin,
+  '=': HorizontalFireball,
+  '|': VerticalFireball,
+  'v': FireRain
+};
+const parser = new LevelParser(actors);
+
+loadLevels()
+  .then(result => runGame(JSON.parse(result), parser, DOMDisplay))
+  .then(() => alert('Вы выиграли приз!'));
