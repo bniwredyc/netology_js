@@ -20,12 +20,14 @@ class Vector {
 
 class Actor {
     constructor(pos = new Vector(), size = new Vector(1, 1), speed = new Vector()) {
-        if (pos instanceof Vector && size instanceof Vector && speed instanceof Vector) {
-            this.pos = pos;
+        if (!(pos instanceof Vector) || !(size instanceof Vector) || !(speed instanceof Vector)) {
+            throw new Error('Actor.constructor: все аргументы должны быть объектами Vector');
+            // (поправил) лучше чтобы сначала была проверка аргументов,
+            // а потом основной код
+        } else {
+			this.pos = pos;
             this.size = size;
             this.speed = speed;
-        } else {
-            throw new Error('Actor.constructor: все аргументы должны быть объектами Vector');
         }
 
     }
@@ -54,76 +56,95 @@ class Actor {
     }
 
     isIntersect(actor) {
-        if (!(actor instanceof (Actor)) || actor === undefined) {
-            throw new Error('Actor.isIntersect: аргумент должен быть объектом Actor')
-        } else if (actor === this) {
-            return false;
-        } else {
-            return !(this.right <= actor.left ||
-                this.left >= actor.right ||
-                this.bottom <= actor.top ||
-                this.top >= actor.bottom);
+        if (!(actor instanceof Actor) || (!actor)) {
+            throw new Error(`Не является экземпляром Actor или не передано аргументов`);
         }
+        if (actor === this) {
+            return false;
+		// (поправил) if заканчивается на return, поэтому else можно не писать
+        }
+	    // (поправил) здесь можно внести отрицание в скобки
+        // для этого нужно заменить || на &&
+        // и операторы на противоположные
+        // >= на <, <= на >
+        return (
+            this.right > actor.left &&
+            this.left < actor.right &&
+            this.top < actor.bottom &&
+            this.bottom > actor.top
+        );
     }
 }
 
 class Level {
     constructor(grid = [], actors = []) {
-        this.grid = grid;
-        this.actors = actors;
+        // (поправил) можно создать копии массивов,
+        // чтобы было сложнее исзменить поля объекта извне
+        this.grid = grid.slice();
+        this.actors = actors.slice();
         this.height = grid.length;
-        this.width = this.height > 0 ? Math.max(...grid.map(el => el.length)) : 0;
+        // (поправил) проверку можно убрать, если добавить 0 в список аргументов Math.max
+        this.width = this.grid.reduce((a, b) => {
+            return b.length > a ? b.length : a;
+        }, 0);
         this.status = null;
         this.finishDelay = 1;
-        this.player = this.actors.find(actor => actor.type === 'player');
+        this.player = this.actors.find(act => act.type === 'player');
     }
     isFinished() {
-        return (this.status !== null && this.finishDelay < 0);
+        // (поправил) скобки можно опустить
+        return this.status !== null && this.finishDelay < 0;
     }
 
 
-    actorAt(obj) {
-        if (!(obj instanceof(Actor)) || obj === undefined) {
+    actorAt(actor) {
+        // вторая часть проверки лишняя, т.к.
+        // undefined instanceof Actor это false
+        // instanceof лучше писать без скобок
+        if (!(actor instanceof(Actor)) || (!actor)) {
             throw new Error('Level.actorAt: аргумент должен быть объектом Actor')
         }
-        if (this.actors === undefined) {
-            return undefined;
-        }
-        for (const actor of this.actors) {
-            if (actor.isIntersect(obj)) {
-                return actor;
-            }
-        }
-        return undefined;
+        // (поправил) лучше проверить целостность объекта в конструкторе
+        // и не проверядть дальше по коду заполненность тех или иных полей
+        // (поправил) для поиска объектов в массиве есть специальный метод
+        return this.actors.find(act => act.isIntersect(actor));
     }
-    obstacleAt(destination, size) {
-        if (!(destination instanceof(Vector)) || !(size instanceof(Vector))) {
+    obstacleAt(pos, size) {
+        if (!(pos instanceof(Vector)) && !(size instanceof(Vector))) {
             throw new Error('Level.obstacleAt: аргументы должны быть объектами Vector')
         }
-        let actor = new Actor(destination, size);
-        if (actor.top < 0 || actor.left < 0 || actor.right > this.width) {
+        // поправил
+		const left = Math.floor(pos.x);
+        const right = Math.ceil(pos.x + size.x);
+        const top = Math.floor(pos.y);
+        const bottom = Math.ceil(pos.y + size.y);
+        if (left < 0 || right > this.width || top < 0) {
             return 'wall';
         }
-        if (actor.bottom > this.height) {
+        if (bottom > this.height) {
             return 'lava';
         }
-        for (let col = Math.floor(actor.top); col < Math.ceil(actor.bottom); col++) {
-            for (let row = Math.floor(actor.left); row < Math.ceil(actor.right); row++) {
-                if (this.grid[col][row] !== undefined) {
-                    return this.grid[col][row];
+        // поправил
+        for (let i = top; i < bottom; i++) {
+            for (let k = left; k < right; k++) {
+                // поправил
+                const cross = this.grid[i][k];
+                if (cross) {
+                    return cross;
                 }
             }
         }
-        return undefined;
+        // (поправил) лишняя строчка, функция и так возвращает undefined, если не указано иное
     }
     removeActor(actor) {
-        this.actors = this.actors.filter(item => item.pos !== actor.pos || item.size !== actor.size || item.speed !== actor.speed);
+        // (поправил) метод реализован некорректно
+        // нужно удалять именно переданный объект,
+        // не а объект с такими же характеристиками
+        this.actors = this.actors.filter(el => el !== actor);
     }
     noMoreActors(type) {
-        if (!(this.actors.find(actor => actor.type === type))) {
-            return true;
-        }
-        return false;
+        // (поправил) для проверки наличия объекта в массиве лучше использовать методе some
+        return !this.actors.some(el => el.type === type);
     }
     playerTouched(type, actor) {
         if (type === 'lava' || type === 'fireball') {
@@ -139,51 +160,41 @@ class Level {
 }
 
 class LevelParser {
-  constructor(dictionary) {
-    this.dictionary = dictionary;
-  }
-  actorFromSymbol(symbol) {
-    if (symbol === undefined) {
-      return undefined;
+    // поправил
+    constructor(map = {}) {
+        this.map = map;
     }
-    return this.dictionary[symbol] ? this.dictionary[symbol] : undefined;
-  }
-  obstacleFromSymbol(symbol) {
-    if (symbol === 'x') {
-      return 'wall';
-    } else if (symbol === '!') {
-      return 'lava';
-    } else {
-      return undefined;
+    // поправил 
+    actorFromSymbol(symbol) {
+        return this.map[symbol];
     }
-  }
+    // поправил
+    obstacleFromSymbol(symbol) {
+        switch (symbol) {
+            case 'x':
+                return 'wall';
+            case '!':
+                return 'lava';
+        }
+    }
   createGrid(plan) {
-    const result = [];
-    for (const row of plan) {
-      const newRow = [];
-      for (const cell of row) {
-        newRow.push(this.obstacleFromSymbol(cell));
-      }
-      result.push(newRow);
-    }
-    return result;
+	// поправил
+    return plan.map(el => el.split('')).map(el => el.map(el => this.obstacleFromSymbol(el)));
   }
   createActors(plan) {
-    const result = [];
-    if (this.dictionary) {
-      plan.forEach((row, y) => {
-        row.split('').forEach((cell, x) => {
-          if (typeof this.dictionary[cell] === 'function') {
-            const pos = new Vector(x, y);
-            const actor = new this.dictionary[cell](pos);
-            if (actor instanceof Actor) {
-              result.push(actor);
-            }
-          }
-        })
-      })
-    }
-    return result;
+	// поправил
+    return plan.reduce((prev, elem, y) => {
+            elem.split('').forEach((count, x) => {
+                const func = this.actorFromSymbol(count);
+                if (typeof func === 'function') {
+                    const actor = new func(new Vector(x, y));
+                    if (actor instanceof Actor) {
+                        prev.push(actor);
+                    }
+                }
+            });
+            return prev;
+        }, []);
   }
   parse(plan) {
     return new Level(this.createGrid(plan), this.createActors(plan));
@@ -191,7 +202,7 @@ class LevelParser {
 }
 
 class Fireball extends Actor {
-  constructor(pos = new Vector(), speed = new Vector()) {
+  constructor(pos = new Vector(0, 0), speed = new Vector(0, 0)) {
     super(pos, new Vector(1,1), speed);
   }
   get type() {
@@ -201,16 +212,13 @@ class Fireball extends Actor {
     return this.pos.plus(this.speed.times(t));
   }
   handleObstacle() {
-    this.speed.x = -this.speed.x;
-    this.speed.y = -this.speed.y;
+    // поправил
+    this.speed = this.speed.times(-1);
   }
   act(t, lvl) {
-    let nextPosition = this.getNextPosition(t);
-    if (!lvl.obstacleAt(nextPosition, this.size)) {
-      this.pos = nextPosition;
-    } else {
-      this.handleObstacle();
-    }
+    // поправил
+    const newPosition = this.getNextPosition(t);
+        lvl.obstacleAt(newPosition, this.size) ? this.handleObstacle() : this.pos = newPosition;
   }
 }
 
@@ -237,9 +245,10 @@ class FireRain extends Fireball{
 }
 
 class Coin extends Actor {
-  constructor(pos = new Vector()) {
+  constructor(pos = new Vector(0, 0)) {
     super(pos.plus(new Vector(0.2, 0.1)), new Vector(0.6, 0.6));
-    this.initPos = pos.plus(new Vector(0.2, 0.1));
+    // (поправил) 2 раза прибавляете к pos одно и то же
+	this.initPos = this.pos;
     this.springSpeed = 8;
     this.springDist = 0.07;
     this.spring = Math.random() * Math.PI * 2;
