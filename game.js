@@ -23,7 +23,7 @@ class Actor {
         if (!(pos instanceof Vector) || !(size instanceof Vector) || !(speed instanceof Vector)) {
             throw new Error('Actor.constructor: все аргументы должны быть объектами Vector');
         }
-		this.pos = pos;
+        this.pos = pos;
         this.size = size;
         this.speed = speed;
     }
@@ -95,7 +95,7 @@ class Level {
         if (!(pos instanceof(Vector)) && !(size instanceof(Vector))) {
 			throw new Error('Level.obstacleAt: аргументы должны быть объектами Vector')
         }
-		const left = Math.floor(pos.x);
+	const left = Math.floor(pos.x);
         const right = Math.ceil(pos.x + size.x);
         const top = Math.floor(pos.y);
         const bottom = Math.ceil(pos.y + size.y);
