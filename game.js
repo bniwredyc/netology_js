@@ -22,15 +22,10 @@ class Actor {
     constructor(pos = new Vector(), size = new Vector(1, 1), speed = new Vector()) {
         if (!(pos instanceof Vector) || !(size instanceof Vector) || !(speed instanceof Vector)) {
             throw new Error('Actor.constructor: все аргументы должны быть объектами Vector');
-            // else можно убрать, т.к. если будет выброшено исключение,
-            // то выполнение функции прервётся
-        } else {
-          // форматирование
-			this.pos = pos;
-            this.size = size;
-            this.speed = speed;
         }
-
+        this.pos = pos;
+        this.size = size;
+        this.speed = speed;
     }
 
     get left() {
@@ -78,9 +73,8 @@ class Level {
         this.grid = grid.slice();
         this.actors = actors.slice();
         this.height = grid.length;
-        // a и b не очень удачные название аргументов - непонятно что в них хранится
-        this.width = this.grid.reduce((a, b) => {
-            return b.length > a ? b.length : a;
+        this.width = this.grid.reduce((memo, el) => {
+            return el.length > memo ? el.length : memo;
         }, 0);
         this.status = null;
         this.finishDelay = 1;
@@ -92,25 +86,20 @@ class Level {
 
 
     actorAt(actor) {
-        // вторая часть проверки лишняя, т.к.
-        // undefined instanceof Actor это false
-        // instanceof лучше писать без скобок
-        // ^
-        // вторая половина проверки всё ещё лишняя
-        if (!(actor instanceof(Actor)) || (!actor)) {
+        if (!(actor instanceof Actor)) {
             throw new Error('Level.actorAt: аргумент должен быть объектом Actor')
         }
         return this.actors.find(act => act.isIntersect(actor));
     }
     obstacleAt(pos, size) {
         if (!(pos instanceof(Vector)) && !(size instanceof(Vector))) {
-            throw new Error('Level.obstacleAt: аргументы должны быть объектами Vector')
+			     throw new Error('Level.obstacleAt: аргументы должны быть объектами Vector')
         }
-        // форматирование
-		const left = Math.floor(pos.x);
+	      const left = Math.floor(pos.x);
         const right = Math.ceil(pos.x + size.x);
         const top = Math.floor(pos.y);
         const bottom = Math.ceil(pos.y + size.y);
+		
         if (left < 0 || right > this.width || top < 0) {
             return 'wall';
         }
@@ -120,7 +109,6 @@ class Level {
 
         for (let i = top; i < bottom; i++) {
             for (let k = left; k < right; k++) {
-                // поправил
                 const cross = this.grid[i][k];
                 if (cross) {
                     return cross;
@@ -149,6 +137,7 @@ class Level {
 
 class LevelParser {
     constructor(map = {}) {
+        // здесь можно создать копию объекта
         this.map = map;
     }
     actorFromSymbol(symbol) {
@@ -166,7 +155,7 @@ class LevelParser {
     return plan.map(el => el.split('')).map(el => el.map(el => this.obstacleFromSymbol(el)));
   }
   createActors(plan) {
-    return plan.reduce((prev, elem, y) => {
+      return plan.reduce((prev, elem, y) => {
             elem.split('').forEach((count, x) => {
                 const func = this.actorFromSymbol(count);
                 if (typeof func === 'function') {
@@ -197,12 +186,14 @@ class Fireball extends Actor {
   handleObstacle() {
     this.speed = this.speed.times(-1);
   }
+  // форматирование
   act(t, lvl) {
     const newPosition = this.getNextPosition(t);
-    // перепишите на if,
-    // иначе сложно разобраться, что происходит
-    // форматирование
-        lvl.obstacleAt(newPosition, this.size) ? this.handleObstacle() : this.pos = newPosition;
+	if (lvl.obstacleAt(newPosition, this.size) === undefined) {
+		this.pos = newPosition;
+	} else {
+		this.handleObstacle();
+	}
   }
 }
 
@@ -230,12 +221,11 @@ class FireRain extends Fireball{
 
 class Coin extends Actor {
   constructor(pos = new Vector(0, 0)) {
-    super(pos.plus(new Vector(0.2, 0.1)), new Vector(0.6, 0.6));
-    // форматирование
-	this.initPos = this.pos;
-    this.springSpeed = 8;
-    this.springDist = 0.07;
-    this.spring = Math.random() * Math.PI * 2;
+	  super(pos.plus(new Vector(0.2, 0.1)), new Vector(0.6, 0.6));
+	  this.initPos = this.pos;
+	  this.springSpeed = 8;
+	  this.springDist = 0.07;
+	  this.spring = Math.random() * Math.PI * 2;
   }
   get type() {
     return 'coin';
